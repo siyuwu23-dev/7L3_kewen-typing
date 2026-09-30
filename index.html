@@ -166,6 +166,36 @@
     let heartsLeft = 3;
     const { pinyin } = pinyinPro;
 
+    // 获取并监听系统语音列表，确保加载中文语音
+    let voices = [];
+    if ('speechSynthesis' in window) {
+        // 部分浏览器（如 Safari）可能会同步加载，部分（如 Chrome）是异步的
+        voices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+            voices = window.speechSynthesis.getVoices();
+        };
+    }
+
+    // 播放语音的函数
+    function speakSentence(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN'; 
+            utterance.rate = 0.85; // 稍微调慢语速，方便听清
+            
+            // 匹配中文语音包，避免浏览器用英文引擎强行读中文变成乱码音
+            const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN') || v.lang.includes('Chinese'));
+            if (zhVoice) {
+                utterance.voice = zhVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.warn("当前浏览器不支持语音播报功能");
+        }
+    }
+
     function initPage() {
         if (currentIndex >= sentences.length) {
             document.getElementById('header').style.display = 'none';
@@ -190,6 +220,9 @@
         document.getElementById('next-btn').style.display = 'none';
 
         const sentence = sentences[currentIndex];
+        
+        // 播放当前句子的读音
+        speakSentence(sentence);
         
         for (let i = 0; i < sentence.length; i++) {
             const char = sentence[i];
@@ -269,6 +302,8 @@
         initPage();
     }
 
+    // 为了确保语音包在页面加载时有足够时间获取，可以在首次点击或按键后再触发第一句，
+    // 或者直接在onload中调用
     window.onload = initPage;
 </script>
 
